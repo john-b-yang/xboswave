@@ -1,10 +1,10 @@
 PLUGINS=$(wildcard plugins/*.go)
 
-.PHONY: proto
+all: proto proto-py drivers ingester
+
 proto: proto/xbos.proto
 	protoc -Iproto/ -Iproto/googleapis --go_out=plugins=grpc:proto proto/*.proto
 
-.PHONY: proto-py
 proto-py: wavemq/mqpb/wavemq.proto
 	mkdir -p python/pyxbos/pyxbos/wavemq
 	mkdir -p python/pyxbos/pyxbos/wave
@@ -16,6 +16,16 @@ proto-py: wavemq/mqpb/wavemq.proto
 	poetry run python3 -m grpc_tools.protoc -I../../proto -I../../proto/googleapis --python_out=pyxbos --grpc_python_out=pyxbos ../../proto/*.proto; \
 	sed -i -e 's/^import \(.*_pb2\)/from . import \1/g' pyxbos/*pb2*.py; \
 	sed -i -e 's/^import \(.*_pb2\)/from . import \1/g' pyxbos/wave/*pb2*.py
+
+DRIVERDIRS := $(filter %/, $(wildcard driver/*/))
+drivers: $(DRIVERDIRS)
+$(DRIVERDIRS):
+	cd $@ && go build
+
+ingester:
+	cd ingester && make build
+
+.PHONY: proto proto-py drivers ingester $(DRIVERDIRS)
 
 #venv: python/requirements.txt
 #	python3 -m venv venv; \
